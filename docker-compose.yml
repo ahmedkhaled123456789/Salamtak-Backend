@@ -1,0 +1,54 @@
+# Local development stack: API + MongoDB (single-node REPLICA SET, required for transactions) + Redis.
+# Usage:  npm run keys:generate && docker compose up --build
+services:
+  mongo:
+    image: mongo:7
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    ports: ['27017:27017']
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      # Initiates the replica set on first run, then reports healthy once a primary is elected.
+      test: >
+        mongosh --quiet --eval "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }" | grep -q 1
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    ports: ['6379:6379']
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports: ['5000:5000']
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      MONGODB_URI: mongodb://mongo:27017/care?replicaSet=rs0
+      REDIS_URL: redis://redis:6379
+      JWT_PRIVATE_KEY_FILE: /run/secrets/jwt_private
+      JWT_PUBLIC_KEY_FILE: /run/secrets/jwt_public
+      CORS_ORIGINS: http://localhost:3000
+      SWAGGER_ENABLED: 'true'
+    secrets: [jwt_private, jwt_public]
+
+secrets:
+  jwt_private:
+    file: ./keys/jwt-private.pem
+  jwt_public:
+    file: ./keys/jwt-public.pem
+
+volumes:
+  mongo-data:
+  redis-data:

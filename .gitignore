@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+.env
+keys/
+*.log
+.mongo-dev
+
+!.env.*.example
+.env.*
+!.env.example
+!.env.*.example

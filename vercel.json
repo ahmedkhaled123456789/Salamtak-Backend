@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run typecheck",
+  "outputDirectory": "public",
+  "functions": {
+    "api/index.ts": { "maxDuration": 60 }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
+  "crons": [{ "path": "/internal/cron/sweep", "schedule": "0 4 * * *" }]
+}
